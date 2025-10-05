@@ -1,25 +1,67 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-// The main entry point of the application
+// --- Data Models ---
+// These classes help organize our data cleanly.
+
+// Represents a single emergency hotline number.
+class Hotline {
+  final String name;
+  final String number;
+
+  const Hotline({required this.name, required this.number});
+}
+
+// Represents a category of hotlines.
+class HotlineCategory {
+  final String name;
+  final IconData icon;
+  final List<Hotline> hotlines;
+
+  const HotlineCategory({
+    required this.name,
+    required this.icon,
+    required this.hotlines,
+  });
+}
+
+// --- Mock Data ---
+// In a real app, this would come from a database. For now, it's just a list.
+
+final List<HotlineCategory> emergencyHotlineCategories = [
+  const HotlineCategory(
+    name: 'National Hotlines',
+    icon: Icons.public,
+    hotlines: [
+      Hotline(name: 'National Emergency Hotline', number: '911'),
+      Hotline(name: 'NDRRMC', number: '(02) 8911-5061'),
+      Hotline(name: 'Philippine Red Cross', number: '143'),
+    ],
+  ),
+  const HotlineCategory(
+    name: 'Local (Arayat) Hotlines',
+    icon: Icons.location_city,
+    hotlines: [
+      Hotline(name: 'Arayat PNP', number: '0998-598-5920'),
+      Hotline(name: 'Arayat MDRRMO', number: '0917-521-4410'),
+    ],
+  ),
+  const HotlineCategory(
+    name: 'Medical & Fire',
+    icon: Icons.local_hospital,
+    hotlines: [
+      Hotline(name: 'Arayat Fire Station', number: '0998-598-5923'),
+      Hotline(name: 'Arayat District Hospital', number: '(045) 885-0229'),
+    ],
+  ),
+];
+
+// --- Main App Setup ---
+
 void main() {
   runApp(const MyApp());
 }
 
-// A simple data model for a user report
-class Report {
-  final String description;
-  final String location;
-  final DateTime timestamp;
-
-  Report({
-    required this.description,
-    required this.location,
-    required this.timestamp,
-  });
-}
-
-// This is the root widget of the application.
-// It's a StatefulWidget because it needs to manage the theme state (dark/light mode).
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
@@ -28,10 +70,8 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  // A boolean to keep track of whether dark mode is enabled
   bool _isDarkMode = true;
 
-  // This function is called to toggle the theme
   void _toggleTheme() {
     setState(() {
       _isDarkMode = !_isDarkMode;
@@ -41,76 +81,62 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      // The title of the app (seen in the task manager)
       title: 'DryV Flood Nav App',
-      // Removes the debug banner from the top-right corner
       debugShowCheckedModeBanner: false,
-      // Define the theme for the app based on the _isDarkMode state
-      // UPDATED: Themes now use colors from the logo
       theme: _isDarkMode
           ? ThemeData.dark().copyWith(
               colorScheme: ColorScheme.fromSeed(
-                seedColor: Colors.blueGrey, // Using the blue from the logo
+                seedColor: Colors.blueGrey,
                 brightness: Brightness.dark,
               ),
-              scaffoldBackgroundColor: const Color(
-                0xFF121212,
-              ), // Dark background
-              cardColor: Colors.blueGrey[800], // A darker shade for cards
-              // ADDED: Simplified page transitions for a lighter feel
+              scaffoldBackgroundColor: const Color(0xFF121212),
+              cardColor: Colors.blueGrey[800],
               pageTransitionsTheme: const PageTransitionsTheme(
-                builders: <TargetPlatform, PageTransitionsBuilder>{
+                builders: {
                   TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
-                  TargetPlatform.iOS: FadeUpwardsPageTransitionsBuilder(),
                 },
               ),
             )
           : ThemeData.light().copyWith(
               colorScheme: ColorScheme.fromSeed(
-                seedColor: Colors.amber, // Using the yellow from the logo
+                seedColor: Colors.amber,
                 brightness: Brightness.light,
               ),
-              scaffoldBackgroundColor: Colors.grey[100], // Light background
+              scaffoldBackgroundColor: Colors.grey[100],
               cardColor: Colors.white,
-              // ADDED: Simplified page transitions for a lighter feel
               pageTransitionsTheme: const PageTransitionsTheme(
-                builders: <TargetPlatform, PageTransitionsBuilder>{
+                builders: {
                   TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
-                  TargetPlatform.iOS: FadeUpwardsPageTransitionsBuilder(),
                 },
               ),
             ),
-      // The main screen of the app, passing the toggle function to it
       home: HomePage(onToggleTheme: _toggleTheme),
     );
   }
 }
 
-// The main home screen widget
-class HomePage extends StatelessWidget {
-  // A function passed from MyApp to allow this widget to trigger the theme change
-  final VoidCallback onToggleTheme;
+// --- Main Screens ---
 
+class HomePage extends StatelessWidget {
+  final VoidCallback onToggleTheme;
   const HomePage({super.key, required this.onToggleTheme});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // UPDATED: Re-added ClipOval for a circular logo and updated image path
         leading: Padding(
-          padding: const EdgeInsets.all(
-            8.0,
-          ), // Keeps some space around the logo
+          padding: const EdgeInsets.all(8.0),
           child: ClipOval(child: Image.asset('assets/images/dryv_logo.jpg')),
         ),
-        // The title displayed in the app bar
-        title: const Text('DRYV FLOOD NAV APP'),
-        // Actions are widgets displayed on the right side of the app bar
+        title: Text(
+          'DRYV FLOOD NAV APP',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 18),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.brightness_6), // Icon for theme toggle
-            onPressed: onToggleTheme, // Call the function to toggle the theme
+            icon: const Icon(Icons.brightness_6),
+            onPressed: onToggleTheme,
             tooltip: 'Toggle Theme',
           ),
         ],
@@ -119,14 +145,12 @@ class HomePage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // The Expanded widget makes the GridView take up all available space
             Expanded(
               child: GridView.count(
-                crossAxisCount: 2, // 2 columns in the grid
-                crossAxisSpacing: 16, // Horizontal spacing
-                mainAxisSpacing: 16, // Vertical spacing
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
                 children: [
-                  // Creating the 6 dashboard buttons
                   DashboardButton(
                     icon: Icons.map,
                     label: 'Flood Map',
@@ -143,13 +167,12 @@ class HomePage extends StatelessWidget {
                       const ComingSoonPage(featureName: 'Safe Routes'),
                     ),
                   ),
+                  // UPDATED: This now navigates to our new EmergencyHotlinesPage
                   DashboardButton(
                     icon: Icons.phone,
                     label: 'Emergency Hotlines',
-                    onPressed: () => _navigateToPage(
-                      context,
-                      const ComingSoonPage(featureName: 'Emergency Hotlines'),
-                    ),
+                    onPressed: () =>
+                        _navigateToPage(context, const EmergencyHotlinesPage()),
                   ),
                   DashboardButton(
                     icon: Icons.location_on,
@@ -174,7 +197,6 @@ class HomePage extends StatelessWidget {
                 ],
               ),
             ),
-            // NEW: Wide button for Community Reports
             Padding(
               padding: const EdgeInsets.only(top: 16.0),
               child: Card(
@@ -199,7 +221,6 @@ class HomePage extends StatelessWidget {
                         const SizedBox(width: 16),
                         const Text(
                           'Community Reports',
-                          // FIXED: Changed 'bold' to FontWeight.bold
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -211,7 +232,6 @@ class HomePage extends StatelessWidget {
                 ),
               ),
             ),
-            // The text at the bottom of the screen
             const Padding(
               padding: EdgeInsets.only(top: 16.0),
               child: Text(
@@ -225,56 +245,106 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // Helper function to navigate to a new page
   void _navigateToPage(BuildContext context, Widget page) {
     Navigator.push(context, MaterialPageRoute(builder: (context) => page));
   }
 }
 
-// A reusable widget for the buttons on the dashboard
-class DashboardButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onPressed;
+// --- NEW SCREENS FOR DAY 2 ---
 
-  const DashboardButton({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-  });
+// Screen 1: Displays the list of hotline categories.
+// This is a StatelessWidget because the list of categories is fixed.
+class EmergencyHotlinesPage extends StatelessWidget {
+  const EmergencyHotlinesPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 40, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 10),
-            Text(label, textAlign: TextAlign.center),
-          ],
-        ),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Emergency Hotlines')),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(8.0),
+        itemCount: emergencyHotlineCategories.length,
+        itemBuilder: (context, index) {
+          final category = emergencyHotlineCategories[index];
+          return Card(
+            child: ListTile(
+              leading: Icon(
+                category.icon,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              title: Text(
+                category.name,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                // Use Navigator.push to go to the second screen
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HotlineListPage(category: category),
+                  ),
+                );
+              },
+            ),
+          );
+        },
       ),
     );
   }
 }
 
-// NEW: The Community Reports page
+// Screen 2: Displays the specific hotlines for a selected category.
+// This is also a StatelessWidget because it just displays the data it's given.
+class HotlineListPage extends StatelessWidget {
+  final HotlineCategory category;
+  const HotlineListPage({super.key, required this.category});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(category.name)),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(8.0),
+        itemCount: category.hotlines.length,
+        itemBuilder: (context, index) {
+          final hotline = category.hotlines[index];
+          return Card(
+            child: ListTile(
+              leading: const Icon(Icons.call),
+              title: Text(hotline.name),
+              subtitle: Text(hotline.number),
+              // In a real app, this button could launch the phone's dialer.
+              onTap: () {},
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// --- Other existing pages (Settings, About, etc.) ---
+// These are unchanged but needed for the app to compile.
+
+class Report {
+  final String description;
+  final String location;
+  final DateTime timestamp;
+  Report({
+    required this.description,
+    required this.location,
+    required this.timestamp,
+  });
+}
+
 class CommunityReportsPage extends StatefulWidget {
   const CommunityReportsPage({super.key});
-
   @override
   State<CommunityReportsPage> createState() => _CommunityReportsPageState();
 }
 
 class _CommunityReportsPageState extends State<CommunityReportsPage> {
-  // A list to hold the user reports. Initialized with some mock data.
   final List<Report> _reports = [
     Report(
       description: 'Gutter-deep flood on the main road. Traffic is slow.',
@@ -288,18 +358,14 @@ class _CommunityReportsPageState extends State<CommunityReportsPage> {
     ),
   ];
 
-  // Function to navigate to the Add Report page and get the result
   void _navigateAndAddReport() async {
-    // Await the result from the AddReportPage
     final newReport = await Navigator.push<Report>(
       context,
       MaterialPageRoute(builder: (context) => const AddReportPage()),
     );
-
-    // If a new report was returned, add it to the list and rebuild the UI
     if (newReport != null) {
       setState(() {
-        _reports.insert(0, newReport); // Insert at the beginning of the list
+        _reports.insert(0, newReport);
       });
     }
   }
@@ -333,10 +399,8 @@ class _CommunityReportsPageState extends State<CommunityReportsPage> {
   }
 }
 
-// NEW: The page for adding a new report
 class AddReportPage extends StatefulWidget {
   const AddReportPage({super.key});
-
   @override
   State<AddReportPage> createState() => _AddReportPageState();
 }
@@ -348,10 +412,9 @@ class _AddReportPageState extends State<AddReportPage> {
     if (_textController.text.isNotEmpty) {
       final newReport = Report(
         description: _textController.text,
-        location: 'Arayat, Pampanga', // Hardcoded for this example
+        location: 'Arayat, Pampanga',
         timestamp: DateTime.now(),
       );
-      // Pop the page and return the new report object
       Navigator.pop(context, newReport);
     }
   }
@@ -385,10 +448,40 @@ class _AddReportPageState extends State<AddReportPage> {
   }
 }
 
-// A generic "Coming Soon" page for features that are not yet implemented
+class DashboardButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+  const DashboardButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 40, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(height: 10),
+            Text(label, textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class ComingSoonPage extends StatelessWidget {
   final String featureName;
-
   const ComingSoonPage({super.key, required this.featureName});
 
   @override
@@ -413,10 +506,8 @@ class ComingSoonPage extends StatelessWidget {
   }
 }
 
-// The "Settings" page
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -428,10 +519,8 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
-// The "About & Help" page
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
