@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -60,6 +62,81 @@ final List<HotlineCategory> emergencyHotlineCategories = [
   ),
 ];
 
+// --- Splash Screen ---
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Random delay between 3-5 seconds
+    final random = Random();
+    final delay = Duration(
+      seconds: 3 + random.nextInt(3),
+    ); // 3, 4, or 5 seconds
+    Timer(delay, () {
+      // Navigate to the main app (with ProviderScope)
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const ProviderScope(child: MyApp()),
+        ),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.blueAccent,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Logo (scale it up for splash)
+            ClipOval(
+              child: Image.asset(
+                'assets/images/dryv_logo.jpg',
+                height: 120,
+                width: 120,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(height: 32),
+            // App name with animation (fade in)
+            AnimatedOpacity(
+              opacity: 1.0,
+              duration: const Duration(seconds: 1),
+              child: Text(
+                'DRYV',
+                style: GoogleFonts.poppins(
+                  fontSize: 48,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Flood Nav App',
+              style: TextStyle(fontSize: 18, color: Colors.white70),
+            ),
+            const SizedBox(height: 48),
+            // Loading indicator
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // --- Auth Wrapper for Protection ---
 class AuthWrapper extends ConsumerStatefulWidget {
   final Widget child;
@@ -92,7 +169,9 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper> {
 
 // --- App Entry ---
 void main() {
-  runApp(const ProviderScope(child: MyApp()));
+  runApp(
+    MaterialApp(home: const SplashScreen(), debugShowCheckedModeBanner: false),
+  );
 }
 
 class MyApp extends ConsumerWidget {
@@ -479,9 +558,17 @@ class _CommunityReportsPageState extends State<CommunityReportsPage> {
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ListTile(
               leading: const Icon(Icons.warning_amber_rounded),
-              title: Text(report.description),
+              title: Text(
+                report.description,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
               subtitle: Text(
                 '${report.location} - ${report.timestamp.hour}:${report.timestamp.minute.toString().padLeft(2, '0')}',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
           );
