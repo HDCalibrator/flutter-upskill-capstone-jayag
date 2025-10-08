@@ -1,0 +1,1 @@
+{"flutter":{"platforms":{"android":{"default":{"projectId":"dryv-app","appId":"1:60248016485:android:a7518a68c306277805288c","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"dryv-app","configurations":{"android":"1:60248016485:android:a7518a68c306277805288c","ios":"1:60248016485:ios:f2922ce93b25605205288c"}}}}}}

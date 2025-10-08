@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "60248016485",
+    "project_id": "dryv-app",
+    "storage_bucket": "dryv-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:60248016485:android:a7518a68c306277805288c",
+        "android_client_info": {
+          "package_name": "com.example.dryv_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCItippCyd9NPvDUIFj_jlksLaRIgmXEUw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

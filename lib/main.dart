@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'providers/login_provider.dart'; // Your shared provider
+import 'firebase_options.dart';
+import 'providers/auth_provider.dart';
+import 'screens/login_screen.dart';
 
 // --- Data Models ---
 class Hotline {
@@ -80,12 +83,13 @@ class _SplashScreenState extends State<SplashScreen> {
       seconds: 3 + random.nextInt(3),
     ); // 3, 4, or 5 seconds
     Timer(delay, () {
-      // Navigate to the main app (with ProviderScope)
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const ProviderScope(child: MyApp()),
-        ),
-      );
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const ProviderScope(child: MyApp()),
+          ),
+        );
+      }
     });
   }
 
@@ -152,11 +156,13 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper> {
     super.initState();
     // Guard: Redirect if not logged in
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final isLoggedIn = ref.read(loginStateProvider);
-      if (!isLoggedIn) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const LoginPage()),
-        );
+      final authState = ref.read(authProvider);
+      if (authState.value == null) {
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const LoginPage()),
+          );
+        }
       }
     });
   }
@@ -167,26 +173,42 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper> {
   }
 }
 
-// --- App Entry ---
-void main() {
+// --- App Entry (Firebase Initialized) ---
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    // Optional: Uncomment for emulator testing
+    // if (kDebugMode) {
+    //   await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
+    // }
+  } catch (e) {
+    // Log error (replace with logger in production)
+  }
   runApp(
     MaterialApp(home: const SplashScreen(), debugShowCheckedModeBanner: false),
   );
 }
 
+// --- Theme Provider ---
+final themeProvider = StateProvider<bool>(
+  (ref) => false,
+); // Default to light mode
+
+// --- MyApp (Updated: Watches real auth state) ---
 class MyApp extends ConsumerWidget {
-  // Now stateless—theme via provider
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isLoggedIn = ref.watch(loginStateProvider);
-    final isDarkMode = ref.watch(themeProvider); // Watch global theme
+    final authState = ref.watch(authProvider);
 
     return MaterialApp(
       title: 'DryV Flood Nav App',
       debugShowCheckedModeBanner: false,
-      theme: isDarkMode
+      theme: ref.watch(themeProvider)
           ? ThemeData.dark().copyWith(
               colorScheme: ColorScheme.fromSeed(
                 seedColor: Colors.blueGrey,
@@ -215,52 +237,20 @@ class MyApp extends ConsumerWidget {
                 },
               ),
             ),
-      home: isLoggedIn
-          ? const AuthWrapper(child: HomePage())
-          : const LoginPage(),
-    );
-  }
-}
-
-// --- Login Page (Simplified—no callback pass) ---
-class LoginPage extends ConsumerWidget {
-  const LoginPage({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isLoggedIn = ref.watch(loginStateProvider);
-
-    return Scaffold(
-      backgroundColor: Colors.blueAccent,
-      body: Center(
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.blueAccent,
-            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          onPressed: isLoggedIn
-              ? null
-              : () {
-                  ref.read(loginStateProvider.notifier).state = true;
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          const AuthWrapper(child: HomePage()),
-                    ),
-                  );
-                },
-          child: Text(isLoggedIn ? 'Already Logged In' : 'Login to DryV'),
-        ),
+      home: authState.when(
+        data: (user) => user != null
+            ? const AuthWrapper(child: HomePage())
+            : const LoginPage(),
+        loading: () =>
+            const Scaffold(body: Center(child: CircularProgressIndicator())),
+        error: (error, stackTrace) =>
+            const LoginPage(), // Fixed to accept error and stackTrace
       ),
     );
   }
 }
 
-// --- Home Page (No Callback Needed) ---
+// --- Home Page (Updated with User Identifier) ---
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
@@ -274,8 +264,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     super.initState();
     // Extra guard for home
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final isLoggedIn = ref.read(loginStateProvider);
-      if (!isLoggedIn) {
+      final authState = ref.read(authProvider);
+      if (authState.value == null && mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const LoginPage()),
         );
@@ -291,17 +281,17 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   void _toggleTheme() {
-    final currentDark = ref.read(themeProvider);
-    ref.read(themeProvider.notifier).state =
-        !currentDark; // Global toggle via Riverpod
+    final currentDark = ref.read(themeProvider.notifier).state;
+    ref.read(themeProvider.notifier).state = !currentDark;
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLoggedIn = ref.watch(loginStateProvider);
-    if (!isLoggedIn) return const LoginPage();
+    final authState = ref.watch(authProvider);
+    if (authState.value == null) return const LoginPage();
 
-    final isDarkMode = ref.watch(themeProvider); // For icon
+    final user = authState.value!;
+    final isDarkMode = ref.watch(themeProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -309,26 +299,48 @@ class _HomePageState extends ConsumerState<HomePage> {
           padding: const EdgeInsets.all(8.0),
           child: ClipOval(child: Image.asset('assets/images/dryv_logo.jpg')),
         ),
-        title: Text(
-          'DRYV FLOOD NAV APP',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 18),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'DRYV FLOOD NAV APP',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                fontSize: 18,
+              ),
+            ),
+            Text(
+              'Logged in as: ${user.email ?? "Unknown"}',
+              style: TextStyle(
+                fontSize: 12,
+                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(
-            icon: Icon(
-              isDarkMode ? Icons.brightness_high : Icons.brightness_3,
-            ), // Dynamic icon
+            icon: Icon(isDarkMode ? Icons.brightness_high : Icons.brightness_3),
             onPressed: _toggleTheme,
             tooltip: 'Toggle Theme',
           ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',
-            onPressed: () {
-              ref.read(loginStateProvider.notifier).state = false;
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => const LoginPage()),
-              );
+            onPressed: () async {
+              await ref.read(authProvider.notifier).signOut();
+              if (mounted) {
+                // Use a separate function or immediate navigation to avoid async gap
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) => const LoginPage(),
+                      ),
+                    );
+                  }
+                });
+              }
             },
           ),
         ],
@@ -415,9 +427,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface, // High contrast fix
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       ],
@@ -431,9 +441,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               child: Text(
                 'Last Updated: No Data',
                 style: TextStyle(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurfaceVariant, // Better grey for both modes
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
@@ -444,7 +452,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 }
 
-// --- Day 2 Screens (Unchanged, but Wrapped for Protection) ---
+// --- Day 2 Screens (unchanged)
 class EmergencyHotlinesPage extends StatelessWidget {
   const EmergencyHotlinesPage({super.key});
 
@@ -666,11 +674,8 @@ class DashboardButton extends StatelessWidget {
                 label,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface, // High contrast: white in dark, black in light
-                  fontWeight:
-                      FontWeight.w500, // Optional: Bolder for readability
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
