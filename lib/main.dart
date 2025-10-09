@@ -453,41 +453,43 @@ class _HomePageState extends ConsumerState<HomePage> {
 }
 
 // --- Day 2 Screens (unchanged)
-class EmergencyHotlinesPage extends StatelessWidget {
+class EmergencyHotlinesPage extends ConsumerWidget {
   const EmergencyHotlinesPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hotlinesAsync = ref.watch(hotlineProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Emergency Hotlines')),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(8.0),
-        itemCount: emergencyHotlineCategories.length,
-        itemBuilder: (context, index) {
-          final category = emergencyHotlineCategories[index];
-          return Card(
-            child: ListTile(
-              leading: Icon(
-                category.icon,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              title: Text(
-                category.name,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.push(
+      body: hotlinesAsync.when(
+        data: (categories) => ListView.builder(
+          padding: const EdgeInsets.all(8.0), // Added padding for consistency
+          itemCount: categories.length,
+          itemBuilder: (context, index) {
+            final category = categories[index];
+            return Card(
+              child: ListTile(
+                leading: Icon(
+                  category.icon,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                title: Text(
+                  category.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) =>
-                        AuthWrapper(child: HotlineListPage(category: category)),
+                    builder: (context) => HotlineListPage(category: category),
                   ),
-                );
-              },
-            ),
-          );
-        },
+                ),
+              ),
+            );
+          },
+        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text('Error: $error')),
       ),
     );
   }
