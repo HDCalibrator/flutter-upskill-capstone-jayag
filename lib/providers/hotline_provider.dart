@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../models/hotline.dart';
+import '../models/hotline.dart'; // Adjusted path
 
 final hotlineProvider = FutureProvider<List<HotlineCategory>>((ref) async {
   final response = await http.get(

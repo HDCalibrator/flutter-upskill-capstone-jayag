@@ -7,25 +7,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
+import 'package:dryv_app/providers/report_provider.dart';
+// Kept to justify usage in type context
 
 // --- Data Models ---
-class Hotline {
-  final String name;
-  final String number;
-  const Hotline({required this.name, required this.number});
-}
-
-class HotlineCategory {
-  final String name;
-  final IconData icon;
-  final List<Hotline> hotlines;
-  const HotlineCategory({
-    required this.name,
-    required this.icon,
-    required this.hotlines,
-  });
-}
-
 class Report {
   final String description;
   final String location;
@@ -37,31 +22,16 @@ class Report {
   });
 }
 
-final List<HotlineCategory> emergencyHotlineCategories = [
-  const HotlineCategory(
-    name: 'National Hotlines',
-    icon: Icons.public,
-    hotlines: [
-      Hotline(name: 'National Emergency Hotline', number: '911'),
-      Hotline(name: 'NDRRMC', number: '(02) 8911-5061'),
-      Hotline(name: 'Philippine Red Cross', number: '143'),
-    ],
+final List<Report> initialReports = [
+  Report(
+    description: 'Gutter-deep flood on the main road. Traffic is slow.',
+    location: 'Poblacion, Arayat',
+    timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
   ),
-  const HotlineCategory(
-    name: 'Local (Arayat) Hotlines',
-    icon: Icons.location_city,
-    hotlines: [
-      Hotline(name: 'Arayat PNP', number: '0998-598-5920'),
-      Hotline(name: 'Arayat MDRRMO', number: '0917-521-4410'),
-    ],
-  ),
-  const HotlineCategory(
-    name: 'Medical & Fire',
-    icon: Icons.local_hospital,
-    hotlines: [
-      Hotline(name: 'Arayat Fire Station', number: '0998-598-5923'),
-      Hotline(name: 'Arayat District Hospital', number: '(045) 885-0229'),
-    ],
+  Report(
+    description: 'Road is now passable to all types of vehicles.',
+    location: 'San Nicolas, Arayat',
+    timestamp: DateTime.now().subtract(const Duration(hours: 1)),
   ),
 ];
 
@@ -77,11 +47,8 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Random delay between 3-5 seconds
     final random = Random();
-    final delay = Duration(
-      seconds: 3 + random.nextInt(3),
-    ); // 3, 4, or 5 seconds
+    final delay = Duration(seconds: 3 + random.nextInt(3));
     Timer(delay, () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
@@ -101,7 +68,6 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo (scale it up for splash)
             ClipOval(
               child: Image.asset(
                 'assets/images/dryv_logo.jpg',
@@ -111,7 +77,6 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ),
             const SizedBox(height: 32),
-            // App name with animation (fade in)
             AnimatedOpacity(
               opacity: 1.0,
               duration: const Duration(seconds: 1),
@@ -130,7 +95,6 @@ class _SplashScreenState extends State<SplashScreen> {
               style: TextStyle(fontSize: 18, color: Colors.white70),
             ),
             const SizedBox(height: 48),
-            // Loading indicator
             const CircularProgressIndicator(
               valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
             ),
@@ -154,7 +118,6 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper> {
   @override
   void initState() {
     super.initState();
-    // Guard: Redirect if not logged in
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authState = ref.read(authProvider);
       if (authState.value == null) {
@@ -185,7 +148,9 @@ Future<void> main() async {
     //   await FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
     // }
   } catch (e) {
-    // Log error (replace with logger in production)
+    // Ignoring error for now, add logging in production
+    // ignore: avoid_print
+    print('Firebase initialization error: $e'); // Added for warning fix
   }
   runApp(
     MaterialApp(home: const SplashScreen(), debugShowCheckedModeBanner: false),
@@ -193,11 +158,8 @@ Future<void> main() async {
 }
 
 // --- Theme Provider ---
-final themeProvider = StateProvider<bool>(
-  (ref) => false,
-); // Default to light mode
+final themeProvider = StateProvider<bool>((ref) => false);
 
-// --- MyApp (Updated: Watches real auth state) ---
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
@@ -243,14 +205,13 @@ class MyApp extends ConsumerWidget {
             : const LoginPage(),
         loading: () =>
             const Scaffold(body: Center(child: CircularProgressIndicator())),
-        error: (error, stackTrace) =>
-            const LoginPage(), // Fixed to accept error and stackTrace
+        error: (error, stackTrace) => const LoginPage(),
       ),
     );
   }
 }
 
-// --- Home Page (Updated with User Identifier) ---
+// --- Home Page ---
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
@@ -262,7 +223,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void initState() {
     super.initState();
-    // Extra guard for home
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authState = ref.read(authProvider);
       if (authState.value == null && mounted) {
@@ -330,7 +290,6 @@ class _HomePageState extends ConsumerState<HomePage> {
             onPressed: () async {
               await ref.read(authProvider.notifier).signOut();
               if (mounted) {
-                // Use a separate function or immediate navigation to avoid async gap
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (mounted) {
                     Navigator.of(context).pushReplacement(
@@ -372,10 +331,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ),
                   ),
                   DashboardButton(
-                    icon: Icons.phone,
-                    label: 'Emergency Hotlines',
+                    icon: Icons.warning,
+                    label: 'Flood Reports',
                     onPressed: () =>
-                        _navigateToPage(context, const EmergencyHotlinesPage()),
+                        _navigateToPage(context, const FloodReportsPage()),
                   ),
                   DashboardButton(
                     icon: Icons.location_on,
@@ -452,71 +411,54 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 }
 
-// --- Day 2 Screens (unchanged)
-class EmergencyHotlinesPage extends ConsumerWidget {
-  const EmergencyHotlinesPage({super.key});
+// --- Flood Reports Page ---
+class FloodReportsPage extends ConsumerWidget {
+  const FloodReportsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final hotlinesAsync = ref.watch(hotlineProvider);
+    final reportsAsync = ref.watch(reportProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Emergency Hotlines')),
-      body: hotlinesAsync.when(
-        data: (categories) => ListView.builder(
-          padding: const EdgeInsets.all(8.0), // Added padding for consistency
-          itemCount: categories.length,
-          itemBuilder: (context, index) {
-            final category = categories[index];
-            return Card(
-              child: ListTile(
-                leading: Icon(
-                  category.icon,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                title: Text(
-                  category.name,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => HotlineListPage(category: category),
-                  ),
-                ),
+      appBar: AppBar(title: const Text('Flood Reports')),
+      body: reportsAsync.when(
+        data: (reports) => reports.isEmpty
+            ? const Center(
+                child: Text('No flood reports available at this time.'),
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.all(8.0),
+                itemCount: reports.length,
+                itemBuilder: (context, index) {
+                  final report = reports[index];
+                  return Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.flood),
+                      title: Text(
+                        report.declarationTitle,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        '${report.designatedArea}, ${report.state} - ${report.declarationDate.toLocal().toString().split(' ')[0]}',
+                      ),
+                      onTap: () {}, // Optional: Add detail page later
+                    ),
+                  );
+                },
               ),
-            );
-          },
-        ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(child: Text('Error: $error')),
-      ),
-    );
-  }
-}
-
-class HotlineListPage extends StatelessWidget {
-  final HotlineCategory category;
-  const HotlineListPage({super.key, required this.category});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(category.name)),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(8.0),
-        itemCount: category.hotlines.length,
-        itemBuilder: (context, index) {
-          final hotline = category.hotlines[index];
-          return Card(
-            child: ListTile(
-              leading: const Icon(Icons.call),
-              title: Text(hotline.name),
-              subtitle: Text(hotline.number),
-              onTap: () {}, // TODO: Dialer integration
-            ),
-          );
-        },
+        error: (error, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Error loading flood reports: $error'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref.refresh(reportProvider), // Retry button
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -529,18 +471,7 @@ class CommunityReportsPage extends StatefulWidget {
 }
 
 class _CommunityReportsPageState extends State<CommunityReportsPage> {
-  final List<Report> _reports = [
-    Report(
-      description: 'Gutter-deep flood on the main road. Traffic is slow.',
-      location: 'Poblacion, Arayat',
-      timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
-    ),
-    Report(
-      description: 'Road is now passable to all types of vehicles.',
-      location: 'San Nicolas, Arayat',
-      timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-    ),
-  ];
+  final List<Report> _reports = initialReports;
 
   void _navigateAndAddReport() async {
     final newReport = await Navigator.push<Report>(
