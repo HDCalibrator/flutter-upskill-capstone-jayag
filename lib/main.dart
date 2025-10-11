@@ -4,11 +4,15 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'; // New import
+import 'package:timezone/data/latest.dart' as tz; // For scheduling
+import 'package:timezone/timezone.dart' as tz; // For scheduling
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
 import 'package:dryv_app/providers/report_provider.dart'; // Kept for FloodReportsPage
-import 'package:dryv_app/providers/weather_provider.dart'; // New import for weather
+import 'package:dryv_app/providers/weather_provider.dart'; // Kept for WeatherPage
+import 'package:dryv_app/services/notification_service.dart'; // New import
 
 // --- Data Models ---
 class Report {
@@ -150,8 +154,10 @@ Future<void> main() async {
   } catch (e) {
     // Ignoring error for now, add logging in production
     // ignore: avoid_print
-    print('Firebase initialization error: $e'); // Added for warning fix
+    print('Firebase initialization error: $e');
   }
+  final notificationService = NotificationService();
+  await notificationService.initialize(); // Initialize notifications
   runApp(
     MaterialApp(home: const SplashScreen(), debugShowCheckedModeBanner: false),
   );
@@ -207,6 +213,7 @@ class MyApp extends ConsumerWidget {
             const Scaffold(body: Center(child: CircularProgressIndicator())),
         error: (error, stackTrace) => const LoginPage(),
       ),
+      routes: {'/notifications': (context) => const NotificationsPage()},
     );
   }
 }
@@ -362,6 +369,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                     onPressed: () =>
                         _navigateToPage(context, const AboutPage()),
                   ),
+                  DashboardButton(
+                    icon: Icons.notifications,
+                    label: 'Notifications',
+                    onPressed: () =>
+                        _navigateToPage(context, const NotificationsPage()),
+                  ),
                 ],
               ),
             ),
@@ -470,13 +483,12 @@ class FloodReportsPage extends ConsumerWidget {
   }
 }
 
-// --- Weather Page (New for Day 5) ---
+// --- Weather Page ---
 class WeatherPage extends ConsumerWidget {
   const WeatherPage({super.key});
 
   Future<void> _refreshData(WidgetRef ref) async {
-    // ignore: unused_result
-    ref.refresh(weatherProvider); // This line triggers the warning
+    await ref.refresh(weatherProvider); // Fixed to use await
   }
 
   @override
@@ -752,6 +764,47 @@ class AboutPage extends StatelessWidget {
             Text(
               'Version 1.0 (Front-End Only)',
               style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// --- Notifications Page for testing local notifications ---
+class NotificationsPage extends ConsumerWidget {
+  const NotificationsPage({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notificationService = NotificationService();
+    return Scaffold(
+      appBar: AppBar(title: const Text('Notifications Test')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: () async {
+                await notificationService.showNotification();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Notification triggered!')),
+                );
+              },
+              child: const Text('Show Notification Now'),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () async {
+                await notificationService.scheduleNotification();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Notification scheduled in 5 seconds!'),
+                  ),
+                );
+              },
+              child: const Text('Schedule Notification'),
             ),
           ],
         ),
