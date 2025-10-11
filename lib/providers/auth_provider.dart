@@ -1,3 +1,4 @@
+// lib/providers/auth_provider.dart (verify this is unchanged)
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,17 +18,30 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
   AuthNotifier(this._auth) : super(const AsyncValue.data(null)) {
     _auth.setPersistence(Persistence.NONE); // Disable auto-login for testing
     _auth.authStateChanges().listen((user) {
-      state = AsyncValue.data(user);
+      if (user != null) {
+        state = AsyncValue.data(user); // Update state on successful login
+      } else {
+        state = const AsyncValue.data(null); // Update state on logout
+      }
     });
   }
 
   Future<void> signInWithEmailAndPassword(String email, String password) async {
+    state = const AsyncValue.loading(); // Set loading state
     try {
-      state = const AsyncValue.loading();
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
-      state = AsyncValue.data(_auth.currentUser); // Manual state update
-    } catch (e) {
-      state = AsyncValue.error(e, StackTrace.current);
+      final userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      state = AsyncValue.data(
+        userCredential.user,
+      ); // Update with authenticated user
+    } finally {
+      if (state is AsyncLoading) {
+        state = const AsyncValue.data(
+          null,
+        ); // Reset to null if still loading (error case)
+      }
     }
   }
 
@@ -35,20 +49,26 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
     String email,
     String password,
   ) async {
+    state = const AsyncValue.loading(); // Set loading state
     try {
-      state = const AsyncValue.loading();
-      await _auth.createUserWithEmailAndPassword(
+      final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-      state = AsyncValue.data(_auth.currentUser);
-    } catch (e) {
-      state = AsyncValue.error(e, StackTrace.current);
+      state = AsyncValue.data(
+        userCredential.user,
+      ); // Update with registered user
+    } finally {
+      if (state is AsyncLoading) {
+        state = const AsyncValue.data(
+          null,
+        ); // Reset to null if still loading (error case)
+      }
     }
   }
 
   Future<void> signOut() async {
     await _auth.signOut();
-    state = const AsyncValue.data(null);
+    state = const AsyncValue.data(null); // Clear state on logout
   }
 }

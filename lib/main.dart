@@ -475,9 +475,8 @@ class WeatherPage extends ConsumerWidget {
   const WeatherPage({super.key});
 
   Future<void> _refreshData(WidgetRef ref) async {
-    ref.refresh(
-      weatherProvider,
-    ); // Refreshes the provider, triggering a new API call
+    // ignore: unused_result
+    ref.refresh(weatherProvider); // This line triggers the warning
   }
 
   @override
@@ -490,7 +489,7 @@ class WeatherPage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh Weather',
-            onPressed: () => _refreshData(ref), // Button to refresh
+            onPressed: () => _refreshData(ref), // Trigger refresh
           ),
         ],
       ),
