@@ -7,8 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
-import 'package:dryv_app/providers/report_provider.dart';
-// Kept to justify usage in type context
+import 'package:dryv_app/providers/report_provider.dart'; // Kept for FloodReportsPage
+import 'package:dryv_app/providers/weather_provider.dart'; // New import for weather
 
 // --- Data Models ---
 class Report {
@@ -345,6 +345,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ),
                   ),
                   DashboardButton(
+                    icon: Icons.wb_sunny,
+                    label: 'Weather',
+                    onPressed: () =>
+                        _navigateToPage(context, const WeatherPage()),
+                  ),
+                  DashboardButton(
                     icon: Icons.settings,
                     label: 'Settings',
                     onPressed: () =>
@@ -457,6 +463,77 @@ class FloodReportsPage extends ConsumerWidget {
                 child: const Text('Retry'),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// --- Weather Page (New for Day 5) ---
+class WeatherPage extends ConsumerWidget {
+  const WeatherPage({super.key});
+
+  Future<void> _refreshData(WidgetRef ref) async {
+    ref.refresh(
+      weatherProvider,
+    ); // Refreshes the provider, triggering a new API call
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final weatherAsync = ref.watch(weatherProvider);
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Pampanga Weather'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh Weather',
+            onPressed: () => _refreshData(ref), // Button to refresh
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: () => _refreshData(ref), // Pull-to-refresh gesture
+        child: weatherAsync.when(
+          data: (weather) => weather.isEmpty
+              ? const Center(
+                  child: Text('No weather data available at this time.'),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(8.0),
+                  itemCount: weather.length,
+                  itemBuilder: (context, index) {
+                    final report = weather[index];
+                    return Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.wb_sunny),
+                        title: Text(
+                          '${report.location} - ${report.time.toLocal().toString().split('.')[0]} - ${report.temperature}°C',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          'Precipitation: ${report.precipitation}mm/h - ${report.condition}',
+                        ),
+                        onTap: () {}, // Optional: Add detail page later
+                      ),
+                    );
+                  },
+                ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('Error loading weather data: $error'),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => _refreshData(ref), // Retry button on error
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
